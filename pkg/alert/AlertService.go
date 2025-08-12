@@ -8,5 +8,5 @@ import (
 var log = logrus.New()
 
 func SendAlert(t transaction.Transaction) {
-	log.Info("ALERT: Fraudulent activity detected in transaction ID: %s\n", t.ID)
+	log.Info("ALERT: Fraudulent activity detected in transaction ID: %s\n", t.TransactionID)
 }

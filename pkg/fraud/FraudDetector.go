@@ -5,6 +5,20 @@ import (
 	"fraud-detection/pkg/transaction"
 )
 
-func CheckTransactionForFraud(t transaction.Transaction, transactions []transaction.Transaction, checker frauddetector.TransactionChecker) bool {
-	return frauddetector.IsSuspiciousTransaction(t, transactions, checker)
+func CheckTransactionForFraud(
+	transaction transaction.Transaction,
+	history []transaction.Transaction,
+	previousLocation string,
+	currentLocation string,
+	orderOfQuery string,
+	checker frauddetector.TransactionChecker,
+) bool {
+	return frauddetector.IsSuspiciousTransaction(
+		transaction,
+		history,
+		previousLocation,
+		currentLocation,
+		orderOfQuery,
+		checker,
+	)
 }

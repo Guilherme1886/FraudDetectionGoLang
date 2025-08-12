@@ -4,62 +4,138 @@ import (
 	"context"
 	"fraud-detection/pkg/transaction"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"time"
 )
 
-func InsertTransaction(ctx context.Context, conn *pgx.Conn, t transaction.Transaction) error {
-	_, err := conn.Exec(ctx, `
-		INSERT INTO transactions (account_id, amount, timestamp, location, ip_address)
-		VALUES ($1, $2, $3, $4, $5)
-	`, t.AccountID, t.Amount, t.Timestamp, t.Location, t.IPAddress)
-
-	return err
+type DB interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-func GetTransactionsByAccountID(ctx context.Context, conn *pgx.Conn, accountID string) ([]transaction.Transaction, error) {
-	rows, err := conn.Query(ctx, `
-		SELECT id, account_id, amount, timestamp, location, ip_address
-		FROM transactions
-		WHERE account_id = $1
--- 		ORDER BY timestamp DESC
-	`, accountID)
+const (
+	insertTransactionSQL = `
+INSERT INTO transactions (
+  transaction_id,
+  amount,
+  account_id,
+  location,
+  transaction_time,
+  elapsed_time,
+  frequency,
+  fraud_label
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+RETURNING transaction_id;`
+
+	getByAccountSQL = `
+SELECT
+  transaction_id,
+  amount,
+  account_id,
+  location,
+  transaction_time,
+  elapsed_time,
+  frequency,
+  fraud_label
+FROM transactions
+WHERE account_id = $1
+ORDER BY transaction_time DESC;`
+
+	getAllSQL = `
+SELECT
+  transaction_id,
+  amount,
+  account_id,
+  location,
+  transaction_time,
+  elapsed_time,
+  frequency,
+  fraud_label
+FROM transactions
+ORDER BY transaction_time DESC;`
+)
+
+func InsertTransaction(ctx context.Context, db DB, t transaction.Transaction) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	var id string
+	err := db.QueryRow(ctx, insertTransactionSQL,
+		t.TransactionID,
+		t.Amount,
+		t.AccountID,
+		t.Location,
+		t.TransactionTime,
+		t.ElapsedTime,
+		t.Frequency,
+		t.FraudLabel,
+	).Scan(&id)
+	return id, err
+}
+
+func GetTransactionsByAccountID(ctx context.Context, db DB, accountID string) ([]transaction.Transaction, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	rows, err := db.Query(ctx, getByAccountSQL, accountID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var transactions []transaction.Transaction
+	var out []transaction.Transaction
 	for rows.Next() {
 		var t transaction.Transaction
-		err := rows.Scan(&t.ID, &t.AccountID, &t.Amount, &t.Timestamp, &t.Location, &t.IPAddress)
-		if err != nil {
+		if err := rows.Scan(
+			&t.TransactionID,
+			&t.Amount,
+			&t.AccountID,
+			&t.Location,
+			&t.TransactionTime,
+			&t.ElapsedTime,
+			&t.Frequency,
+			&t.FraudLabel,
+		); err != nil {
 			return nil, err
 		}
-		transactions = append(transactions, t)
+		out = append(out, t)
 	}
-
-	return transactions, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func GetTransactions(ctx context.Context, conn *pgx.Conn) ([]transaction.Transaction, error) {
-	rows, err := conn.Query(ctx, `
-		SELECT id, account_id, amount, timestamp, location, ip_address
-		FROM transactions
--- 		ORDER BY timestamp DESC
-	`)
+func GetTransactions(ctx context.Context, db DB) ([]transaction.Transaction, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	rows, err := db.Query(ctx, getAllSQL)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var transactions []transaction.Transaction
+	var out []transaction.Transaction
 	for rows.Next() {
 		var t transaction.Transaction
-		err := rows.Scan(&t.ID, &t.AccountID, &t.Amount, &t.Timestamp, &t.Location, &t.IPAddress)
-		if err != nil {
+		if err := rows.Scan(
+			&t.TransactionID,
+			&t.Amount,
+			&t.AccountID,
+			&t.Location,
+			&t.TransactionTime,
+			&t.ElapsedTime,
+			&t.Frequency,
+			&t.FraudLabel,
+		); err != nil {
 			return nil, err
 		}
-		transactions = append(transactions, t)
+		out = append(out, t)
 	}
-
-	return transactions, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

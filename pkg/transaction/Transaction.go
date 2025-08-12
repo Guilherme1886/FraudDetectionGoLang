@@ -1,22 +1,30 @@
 package transaction
 
-import "time"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 type Transaction struct {
-	ID        string    `json:"id"`
-	Amount    float64   `json:"amount"`
-	Timestamp time.Time `json:"timestamp"`
-	AccountID string    `json:"account_id"`
-	Location  string    `json:"location"`
-	IPAddress string    `json:"ip_address"`
+	TransactionID   string    `json:"transaction_id"`
+	Amount          float64   `json:"amount"`
+	AccountID       string    `json:"account_id"`
+	Location        string    `json:"location"`
+	TransactionTime time.Time `json:"transaction_time"`
+	ElapsedTime     float64   `json:"elapsed_time"`
+	Frequency       int       `json:"frequency"`
+	FraudLabel      int       `json:"fraud_label"`
 }
 
-func NewTransaction(amount float64, accountID, location, ipAddress string) Transaction {
+func NewTransaction(amount float64, accountID string, location string, elapsedTime float64, frequency int) Transaction {
 	return Transaction{
-		Amount:    amount,
-		Timestamp: time.Now().UTC(),
-		AccountID: accountID,
-		Location:  location,
-		IPAddress: ipAddress,
+		TransactionID:   uuid.New().String(),
+		Amount:          amount,
+		AccountID:       accountID,
+		Location:        location,
+		TransactionTime: time.Now().UTC(),
+		ElapsedTime:     elapsedTime,
+		Frequency:       frequency,
+		FraudLabel:      0,
 	}
 }
