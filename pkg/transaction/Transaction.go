@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+type Label int
+
+const (
+	LabelLegit Label = iota
+	LabelFraud
+)
+
 type Transaction struct {
 	TransactionID   string    `json:"transaction_id"`
 	Amount          float64   `json:"amount"`
@@ -13,10 +20,13 @@ type Transaction struct {
 	TransactionTime time.Time `json:"transaction_time"`
 	ElapsedTime     float64   `json:"elapsed_time"`
 	Frequency       int       `json:"frequency"`
-	FraudLabel      int       `json:"fraud_label"`
+	FraudLabel      Label     `json:"fraud_label"`
 }
 
-func NewTransaction(amount float64, accountID string, location string, elapsedTime float64, frequency int) Transaction {
+func NewTransaction(amount float64, accountID, location string, elapsedTime float64, frequency int) Transaction {
+	if amount < 0 {
+		amount = 0
+	}
 	return Transaction{
 		TransactionID:   uuid.New().String(),
 		Amount:          amount,
@@ -25,6 +35,6 @@ func NewTransaction(amount float64, accountID string, location string, elapsedTi
 		TransactionTime: time.Now().UTC(),
 		ElapsedTime:     elapsedTime,
 		Frequency:       frequency,
-		FraudLabel:      0,
+		FraudLabel:      LabelLegit,
 	}
 }

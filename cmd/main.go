@@ -161,7 +161,7 @@ func CreateAndHandleTransaction(writer http.ResponseWriter, request *http.Reques
 	isFraud := isLocalFraud || (mlPrediction != nil && mlPrediction.Fraud == 1)
 
 	if isFraud {
-		transactionModel.FraudLabel = 1
+		transactionModel.FraudLabel = transaction.LabelFraud
 		appLogger.Warn("Transaction marked as fraudulent",
 			"account_id", transactionModel.AccountID,
 			"amount", transactionModel.Amount,
@@ -169,7 +169,7 @@ func CreateAndHandleTransaction(writer http.ResponseWriter, request *http.Reques
 		)
 		alert.SendAlert(transactionModel)
 	} else {
-		transactionModel.FraudLabel = 0
+		transactionModel.FraudLabel = transaction.LabelLegit
 	}
 
 	_, err = repository.InsertTransaction(context.Background(), conn, transactionModel)
